@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g., v1.4.0)"
+        description: "Release version (e.g., v1.0.0)"
         required: true
       environment:
         description: "Target environment (e.g., Production)"
@@ -36,7 +36,7 @@ jobs:
           FILE_NAME="release-notes-${{ github.event.inputs.version }}.md"
           NOTES_FILE="$FILE_NAME"
 
-          echo "# 🚀 Production Release Notes" >> $NOTES_FILE
+          echo "# Production Release Notes" >> $NOTES_FILE
           echo "**Version:** ${{ github.event.inputs.version }}" >> $NOTES_FILE
           echo "**Release Date:** ${{ steps.date.outputs.date }}" >> $NOTES_FILE
           echo "**Environment:** ${{ github.event.inputs.environment }}" >> $NOTES_FILE
@@ -44,55 +44,32 @@ jobs:
           echo "**Downtime:** None" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 🧭 1. Overview" >> $NOTES_FILE
+          echo "## 1. Overview" >> $NOTES_FILE
           echo "${{ github.event.inputs.overview }}" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## ✨ 2. New Features" >> $NOTES_FILE
+          echo "## 2. Key Highlights" >> $NOTES_FILE
+          echo "${{ github.event.inputs.highlights }}" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 3. New Features" >> $NOTES_FILE
           echo "- _List new features delivered in this release_" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 🚀 3. Enhancements" >> $NOTES_FILE
+          echo "## 4. Enhancements" >> $NOTES_FILE
           echo "- _List performance improvements, UI changes, etc._" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 🐞 4. Defects Fixed" >> $NOTES_FILE
+          echo "## 5. Defects Fixed" >> $NOTES_FILE
           echo "| Ticket ID | Description | Module | Status |" >> $NOTES_FILE
           echo "|-----------|-------------|--------|--------|" >> $NOTES_FILE
           echo "| BUG-XXXX  | Sample bug description | Sample Module | Fixed |" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 🧱 5. Technical Changes" >> $NOTES_FILE
+          echo "## 6. Technical Changes" >> $NOTES_FILE
           echo "- _Library upgrades, infra changes, refactoring, etc._" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 🧪 6. Post-Deployment Checks" >> $NOTES_FILE
+          echo "## 🧪 7. Post-Deployment Checks" >> $NOTES_FILE
           echo "- Smoke testing" >> $NOTES_FILE
-          echo "- Dashboard & API monitoring" >> $NOTES_FILE
-          echo "- Log analysis" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-          echo "## 🧍 7. Stakeholders" >> $NOTES_FILE
-          echo "| Role | Name | Responsibility |" >> $NOTES_FILE
-          echo "|------|------|----------------|" >> $NOTES_FILE
-          echo "| Release Coordinator | John Doe | Oversees deployment |" >> $NOTES_FILE
-          echo "| QA Lead | Jane Smith | Post-deployment validation |" >> $NOTES_FILE
-          echo "| Dev Lead | Ranjit Kumar | Technical sign-off |" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-          echo "## 📝 8. Rollback Plan" >> $NOTES_FILE
-          echo "- Rollback to previous stable version (vX.X.X) if critical failure occurs." >> $NOTES_FILE
-          echo "- DB schema is backward compatible." >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-      - name: Move File to release-notes Folder
-        run: |
-          mv release-notes-${{ github.event.inputs.version }}.md release-notes/
-
-      - name: Commit and Push Release Notes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add release-notes/release-notes-${{ github.event.inputs.version }}.md
-          git commit -m "chore: add release notes for ${{ github.event.inputs.version }}"
-          git push
+          echo "- Dashboard & API monitoring" >>
