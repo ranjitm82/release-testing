@@ -1,0 +1,88 @@
+name: Generate Detailed Release Notes (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., v1.0.0)"
+        required: true
+      environment:
+        description: "Target environment (e.g., Production)"
+        required: true
+        default: "Production"
+      overview:
+        description: "Short overview of the release"
+        required: true
+      highlights:
+        description: "Key highlights (e.g., New features, performance improvements)"
+        required: true
+
+jobs:
+  generate-detailed-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Get Current Date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Generate Detailed Release Notes
+        run: |
+          NOTES_FILE="release-notes-${{ github.event.inputs.version }}.md"
+
+          echo "# Production Release Notes" >> $NOTES_FILE
+          echo "**Version:** ${{ github.event.inputs.version }}" >> $NOTES_FILE
+          echo "**Release Date:** ${{ steps.date.outputs.date }}" >> $NOTES_FILE
+          echo "**Environment:** ${{ github.event.inputs.environment }}" >> $NOTES_FILE
+          echo "**Release Type:** Scheduled / Major" >> $NOTES_FILE
+          echo "**Downtime:** None" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 1. Overview" >> $NOTES_FILE
+          echo "${{ github.event.inputs.overview }}" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 2. New Features" >> $NOTES_FILE
+          echo "- _List new features delivered in this release_" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 3. Enhancements" >> $NOTES_FILE
+          echo "- _List performance improvements, UI changes, etc._" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 4. Defects Fixed" >> $NOTES_FILE
+          echo "| Ticket ID | Description | Module | Status |" >> $NOTES_FILE
+          echo "|-----------|-------------|--------|--------|" >> $NOTES_FILE
+          echo "| BUG-XXXX  | Sample bug description | Sample Module | Fixed |" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 5. Technical Changes" >> $NOTES_FILE
+          echo "- _Library upgrades, infra changes, refactoring, etc._" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 6. Post-Deployment Checks" >> $NOTES_FILE
+          echo "- Smoke testing" >> $NOTES_FILE
+          echo "- Dashboard & API monitoring" >> $NOTES_FILE
+          echo "- Log analysis" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 7. Stakeholders" >> $NOTES_FILE
+          echo "| Role | Name | Responsibility |" >> $NOTES_FILE
+          echo "|------|------|----------------|" >> $NOTES_FILE
+          echo "| Release Coordinator | John Doe | Oversees deployment |" >> $NOTES_FILE
+          echo "| QA Lead | Jane Smith | Post-deployment validation |" >> $NOTES_FILE
+          echo "| Dev Lead | Ranjit Kumar | Technical sign-off |" >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+          echo "## 8. Rollback Plan" >> $NOTES_FILE
+          echo "- Rollback to previous stable version (vX.X.X) if critical failure occurs." >> $NOTES_FILE
+          echo "- DB schema is backward compatible." >> $NOTES_FILE
+          echo "" >> $NOTES_FILE
+
+      - name: Upload Detailed Release Notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: detailed-release-notes
+          path: release-notes-${{ github.event.inputs.version }}.md
