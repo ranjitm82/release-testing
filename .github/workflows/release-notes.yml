@@ -134,7 +134,13 @@ jobs:
       - name: Move File to release-notes Folder
         run: |
           mkdir -p release-notes
-          mv "release-notes-${{ github.event.inputs.version }}.md" release-notes/
+          FILE="release-notes-${{ github.event.inputs.version }}.md"
+          if [ -f "$FILE" ]; then
+            mv "$FILE" release-notes/
+          else
+            echo "File $FILE not found. Skipping move."
+            exit 1
+          fi
 
       - name: Commit and Push Release Notes
         run: |
