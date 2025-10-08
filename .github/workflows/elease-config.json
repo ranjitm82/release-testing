@@ -1,0 +1,13 @@
+{
+  "version": "v1.0.5",
+  "environment": "Production",
+  "overview": "This release includes new features, bug fixes, and infra updates.",
+  "start_date": "2025-10-01",
+  "end_date": "2025-10-08",
+  "release_type": "Major",
+  "previous_release_version": "v1.0.4",
+  "technical_changes": "- Upgraded database cluster\n- Updated authentication service\n- Code refactoring in billing module",
+  "release_manager": "John Doe",
+  "test_lead": "Jane Smith",
+  "tech_lead": "Ranjit Kumar"
+}
