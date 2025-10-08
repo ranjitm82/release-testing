@@ -22,6 +22,24 @@ on:
       end_date:
         description: "End date for PR collection (YYYY-MM-DD, optional, default = today)"
         required: false
+      release_type:
+        description: "Release type for this deployment (e.g., Major | Minor | Patch | Hotfix)."
+        required: true
+      previous_release_version:
+        description: "Previous stable release version to be used in case of failure."
+        required: true
+      technical_changes:
+        description: "Technical changes (e.g., infrastructure updates, library upgrades, refactoring)"
+        required: true
+      release_manager:
+        description: "Name of the Release Manager responsible for coordinating the deployment"
+        required: true
+      test_lead:
+        description: "Name of the Test/QA Lead responsible for validation"
+        required: true
+      tech_lead:
+        description: "Name of the Technical Lead responsible for technical oversight and approval"
+        required: true
 
 jobs:
   generate-and-commit:
@@ -56,8 +74,13 @@ jobs:
           NOTES_FILE="release-notes-${VERSION}.md"
           OWNER="${{ github.repository_owner }}"
           REPO_NAME=$(basename "${{ github.repository }}")
-
-          echo "# 🚀 Production Release Notes" > "$NOTES_FILE"
+          RELEASE_TYPE=${{ github.event.inputs.release_type}}
+          PREVIOUS_RELEASE_VERSION="${{ github.event.inputs.previous_release_version }}"
+          RELEASE_MANAGER="${{ github.event.inputs.release_manager }}"
+          TEST_LEAD="${{ github.event.inputs.test_lead }}"
+          TECH_LEAD="${{ github.event.inputs.tech_lead }}"
+          
+          echo "# $ENVIRONMENT Release Notes" > "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
           echo "| Key | Value |" >> "$NOTES_FILE"
@@ -65,15 +88,14 @@ jobs:
           echo "| Version | $VERSION |" >> "$NOTES_FILE"
           echo "| Release Date | $END_DATE |" >> "$NOTES_FILE"
           echo "| Environment | $ENVIRONMENT |" >> "$NOTES_FILE"
-          echo "| Release Type | Scheduled / Major |" >> "$NOTES_FILE"
-          echo "| Downtime | None |" >> "$NOTES_FILE"
+          echo "| Release Type | $RELEASE_TYPE |" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
-          echo "## 🧭 1. Overview" >> "$NOTES_FILE"
+          echo "## 1. Overview" >> "$NOTES_FILE"
           echo "$OVERVIEW" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
-          echo "## 🗂️ 2. Merged Pull Requests from $START_DATE to $END_DATE" >> "$NOTES_FILE"
+          echo "## 2. Merged Pull Requests from $START_DATE to $END_DATE" >> "$NOTES_FILE"
           echo "| PR | Commit | Title | Author | Labels |" >> "$NOTES_FILE"
           echo "|----|--------|-------|--------|--------|" >> "$NOTES_FILE"
           
@@ -110,27 +132,27 @@ jobs:
 
 
           echo "" >> "$NOTES_FILE"
-          echo "## 🧱 3. Technical Changes" >> "$NOTES_FILE"
+          echo "## 3. Technical Changes" >> "$NOTES_FILE"
           echo "- _Library upgrades, infra changes, refactoring, etc._" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
-          echo "## 🧪 4. Post-Deployment Checks" >> "$NOTES_FILE"
+          echo "## 4. Post-Deployment Checks" >> "$NOTES_FILE"
           echo "- Smoke testing" >> "$NOTES_FILE"
           echo "- Dashboard & API monitoring" >> "$NOTES_FILE"
           echo "- Log analysis" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
-          echo "## 🧍 5. Stakeholders" >> "$NOTES_FILE"
+          echo "## 5. Stakeholders" >> "$NOTES_FILE"
           echo "| Role | Name | Responsibility |" >> "$NOTES_FILE"
           echo "|------|------|----------------|" >> "$NOTES_FILE"
-          echo "| Release Coordinator | John Doe | Oversees deployment |" >> "$NOTES_FILE"
-          echo "| QA Lead | Jane Smith | Post-deployment validation |" >> "$NOTES_FILE"
-          echo "| Dev Lead | Ranjit Kumar | Technical sign-off |" >> "$NOTES_FILE"
+          echo "| Release Manager | $RELEASE_MANAGER | Oversees deployment |" >> "$NOTES_FILE"
+          echo "| Test Lead | $TEST_LEAD | Post-deployment validation |" >> "$NOTES_FILE"
+          echo "| Tech Lead | $TECH_LEAD | Technical sign-off |" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
-          echo "## 📝 6. Rollback Plan" >> "$NOTES_FILE"
-          echo "- Rollback to previous stable version (vX.X.X) if critical failure occurs." >> "$NOTES_FILE"
-          echo "- DB schema is backward compatible." >> "$NOTES_FILE"
+          echo "## 6. Rollback Plan" >> "$NOTES_FILE"
+          echo "- Rollback to previous stable version ($PREVIOUS_RELEASE_VERSION) if critical failure occurs." >> "$NOTES_FILE"
+          echo "- DB schema is backward compatible (if any)." >> "$NOTES_FILE"
           echo ""
 
       - name: Move File to release-notes Folder
