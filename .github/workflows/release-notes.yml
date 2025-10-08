@@ -134,7 +134,7 @@ jobs:
       - name: Move File to release-notes Folder
         run: |
           mkdir -p release-notes
-          mv release-notes-${{ github.event.inputs.config }}.md release-notes/
+          mv "release-notes-${{ github.event.inputs.version }}.md" release-notes/
 
       - name: Commit and Push Release Notes
         run: |
