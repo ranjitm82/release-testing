@@ -1,7 +1,8 @@
 name: Generate & Commit Detailed Release Notes
 
 permissions:
-  contents: write   # Required to commit back to the repo
+  contents: write   # Required to commit back to repo
+  actions: read
 
 on:
   workflow_dispatch:
@@ -16,9 +17,12 @@ on:
       overview:
         description: "Short overview of the release"
         required: true
-      highlights:
-        description: "Key highlights (bullet points or short summary)"
+      start_date:
+        description: "Start date for PR collection (YYYY-MM-DD)"
         required: true
+      end_date:
+        description: "End date for PR collection (YYYY-MM-DD, optional, default = today)"
+        required: false
 
 jobs:
   generate-and-commit:
@@ -31,23 +35,32 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Generate Detailed Release Notes
+      - name: Set End Date
+        id: enddate
         run: |
-          # Assign input variables to shell variables
+          if [ -z "${{ github.event.inputs.end_date }}" ]; then
+            echo "end_date=${{ steps.date.outputs.date }}" >> $GITHUB_OUTPUT
+          else
+            echo "end_date=${{ github.event.inputs.end_date }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fetch Merged PRs from GitHub API
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           VERSION="${{ github.event.inputs.version }}"
           ENVIRONMENT="${{ github.event.inputs.environment }}"
           OVERVIEW="${{ github.event.inputs.overview }}"
-          HIGHLIGHTS="${{ github.event.inputs.highlights }}"
-          RELEASE_DATE="${{ steps.date.outputs.date }}"
+          START_DATE="${{ github.event.inputs.start_date }}"
+          END_DATE="${{ steps.enddate.outputs.end_date }}"
+          NOTES_FILE="release-notes-${VERSION}.md"
 
-          # File path
-          FILE_NAME="release-notes-${VERSION}.md"
-          NOTES_FILE="$FILE_NAME"
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.repository }}"
 
-          # Generate release notes content
           echo "# 🚀 Production Release Notes" >> $NOTES_FILE
           echo "**Version:** $VERSION" >> $NOTES_FILE
-          echo "**Release Date:** $RELEASE_DATE" >> $NOTES_FILE
+          echo "**Release Date:** $END_DATE" >> $NOTES_FILE
           echo "**Environment:** $ENVIRONMENT" >> $NOTES_FILE
           echo "**Release Type:** Scheduled / Major" >> $NOTES_FILE
           echo "**Downtime:** None" >> $NOTES_FILE
@@ -57,35 +70,63 @@ jobs:
           echo "$OVERVIEW" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## ✨ 2. Key Highlights" >> $NOTES_FILE
-          echo "$HIGHLIGHTS" >> $NOTES_FILE
+          echo "## 🚀 2. New Features" >> $NOTES_FILE
+          echo "| PR | Title | Author |" >> $NOTES_FILE
+          echo "|----|-------|--------|" >> $NOTES_FILE
+
+          # Fetch merged PRs with 'feature' label
+          PAGE=1
+          while true; do
+            PRS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${OWNER}/${REPO}/pulls?state=closed&base=main&per_page=100&page=$PAGE")
+
+            COUNT=$(echo "$PRS" | jq '[.[] | select(.merged_at != null and .merged_at >= "'$START_DATE'" and .merged_at <= "'$END_DATE'" and (.labels[].name=="feature"))] | length')
+            if [ "$COUNT" -eq 0 ]; then
+              break
+            fi
+
+            echo "$PRS" | jq -r '.[] | select(.merged_at != null and .merged_at >= "'$START_DATE'" and .merged_at <= "'$END_DATE'" and (.labels[].name=="feature")) | "| #\(.number) | \(.title) | \(.user.login) |"' >> $NOTES_FILE
+
+            PAGE=$((PAGE+1))
+          done
           echo "" >> $NOTES_FILE
 
-          echo "## 🚀 3. New Features" >> $NOTES_FILE
-          echo "- _List new features delivered in this release_" >> $NOTES_FILE
+          echo "## 🐞 3. Defects Fixed" >> $NOTES_FILE
+          echo "| PR | Title | Author |" >> $NOTES_FILE
+          echo "|----|-------|--------|" >> $NOTES_FILE
+
+          # Fetch merged PRs with 'bug' label
+          PAGE=1
+          while true; do
+            PRS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${OWNER}/${REPO}/pulls?state=closed&base=main&per_page=100&page=$PAGE")
+
+            COUNT=$(echo "$PRS" | jq '[.[] | select(.merged_at != null and .merged_at >= "'$START_DATE'" and .merged_at <= "'$END_DATE'" and (.labels[].name=="bug"))] | length')
+            if [ "$COUNT" -eq 0 ]; then
+              break
+            fi
+
+            echo "$PRS" | jq -r '.[] | select(.merged_at != null and .merged_at >= "'$START_DATE'" and .merged_at <= "'$END_DATE'" and (.labels[].name=="bug")) | "| #\(.number) | \(.title) | \(.user.login) |"' >> $NOTES_FILE
+
+            PAGE=$((PAGE+1))
+          done
           echo "" >> $NOTES_FILE
 
           echo "## 🔧 4. Enhancements" >> $NOTES_FILE
           echo "- _List performance improvements, UI changes, etc._" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 🐞 5. Defects Fixed" >> $NOTES_FILE
-          echo "| Ticket ID | Description | Module | Status |" >> $NOTES_FILE
-          echo "|-----------|-------------|--------|--------|" >> $NOTES_FILE
-          echo "| BUG-XXXX  | Sample bug description | Sample Module | Fixed |" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-          echo "## 🧱 6. Technical Changes" >> $NOTES_FILE
+          echo "## 🧱 5. Technical Changes" >> $NOTES_FILE
           echo "- _Library upgrades, infra changes, refactoring, etc._" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 🧪 7. Post-Deployment Checks" >> $NOTES_FILE
+          echo "## 🧪 6. Post-Deployment Checks" >> $NOTES_FILE
           echo "- Smoke testing" >> $NOTES_FILE
           echo "- Dashboard & API monitoring" >> $NOTES_FILE
           echo "- Log analysis" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 🧍 8. Stakeholders" >> $NOTES_FILE
+          echo "## 🧍 7. Stakeholders" >> $NOTES_FILE
           echo "| Role | Name | Responsibility |" >> $NOTES_FILE
           echo "|------|------|----------------|" >> $NOTES_FILE
           echo "| Release Coordinator | John Doe | Oversees deployment |" >> $NOTES_FILE
@@ -93,7 +134,7 @@ jobs:
           echo "| Dev Lead | Ranjit Kumar | Technical sign-off |" >> $NOTES_FILE
           echo "" >> $NOTES_FILE
 
-          echo "## 📝 9. Rollback Plan" >> $NOTES_FILE
+          echo "## 📝 8. Rollback Plan" >> $NOTES_FILE
           echo "- Rollback to previous stable version (vX.X.X) if critical failure occurs." >> $NOTES_FILE
           echo "- DB schema is backward compatible." >> $NOTES_FILE
           echo "" >> $NOTES_FILE
