@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       config:
-        description: "JSON string containing all release note fields"
+        description: "JSON string with all release details"
         required: true
 
 jobs:
@@ -18,21 +18,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Get Current Date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-
-      - name: Set End Date
-        id: enddate
+      - name: Parse Config JSON
+        id: parse
         run: |
-          CONFIG_JSON='${{ github.event.inputs.config }}'
-          echo "$CONFIG_JSON" > config.json
-          END_DATE=$(jq -r '.end_date // empty' config.json)
-          if [ -z "$END_DATE" ]; then
-            echo "end_date=${{ steps.date.outputs.date }}" >> $GITHUB_OUTPUT
-          else
-            echo "end_date=$END_DATE" >> $GITHUB_OUTPUT
-          fi
+          echo '${{ github.event.inputs.config }}' > config.json
+          VERSION=$(jq -r '.version' config.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate Detailed Release Notes
         env:
@@ -45,7 +36,7 @@ jobs:
           ENVIRONMENT=$(jq -r '.environment' config.json)
           OVERVIEW=$(jq -r '.overview' config.json)
           START_DATE=$(jq -r '.start_date' config.json)
-          END_DATE="${{ steps.enddate.outputs.end_date }}"
+          END_DATE=$(jq -r '.end_date' config.json)
           RELEASE_TYPE=$(jq -r '.release_type' config.json)
           PREVIOUS_RELEASE_VERSION=$(jq -r '.previous_release_version' config.json)
           TECHNICAL_CHANGES=$(jq -r '.technical_changes' config.json)
@@ -84,10 +75,7 @@ jobs:
               "https://api.github.com/search/issues?q=repo:${OWNER}/${REPO_NAME}+is:pr+is:merged+merged:${START_DATE}..${END_DATE}&per_page=${per_page}&page=${page}")
 
             count=$(echo "$response" | jq '.items | length')
-
-            if [ "$count" -eq 0 ]; then
-              break
-            fi
+            [ "$count" -eq 0 ] && break
 
             for i in $(seq 0 $((count - 1))); do
               number=$(echo "$response" | jq -r ".items[$i].number")
@@ -96,14 +84,12 @@ jobs:
               labels=$(echo "$response" | jq -r ".items[$i].labels | map(.name) | join(\", \")")
               [ -z "$labels" ] && labels="-"
 
-              # Get merge commit SHA
               merge_commit_sha=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                 "https://api.github.com/repos/${OWNER}/${REPO_NAME}/pulls/$number" | jq -r '.merge_commit_sha')
               short_sha=${merge_commit_sha:0:7}
 
               echo "| [#$number](https://github.com/$OWNER/$REPO_NAME/pull/$number) | [\`$short_sha\`](https://github.com/$OWNER/$REPO_NAME/commit/$merge_commit_sha) | $title | $user | $labels |" >> "$NOTES_FILE"
             done
-
             page=$((page + 1))
           done
 
@@ -128,13 +114,12 @@ jobs:
 
           echo "## 6. Rollback Plan" >> "$NOTES_FILE"
           echo "- Rollback to previous stable version ($PREVIOUS_RELEASE_VERSION) if critical failure occurs." >> "$NOTES_FILE"
-          echo "- DB schema is backward compatible (if any)." >> "$NOTES_FILE"
-          echo ""
+          echo "- DB schema is backward compatible." >> "$NOTES_FILE"
 
       - name: Move File to release-notes Folder
         run: |
           mkdir -p release-notes
-          FILE="release-notes-${{ github.event.inputs.version }}.md"
+          FILE="release-notes-${{ steps.parse.outputs.version }}.md"
           if [ -f "$FILE" ]; then
             mv "$FILE" release-notes/
           else
@@ -147,5 +132,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add release-notes/
-          git commit -m "chore: add release notes for version" || echo "No changes to commit"
+          git commit -m "chore: add release notes for version ${{ steps.parse.outputs.version }}" || echo "No changes to commit"
           git push
