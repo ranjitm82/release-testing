@@ -31,7 +31,8 @@ jobs:
         run: |
           CONFIG_JSON='${{ github.event.inputs.config }}'
           echo "$CONFIG_JSON" > config.json
-
+          
+          SERVICE=$(jq -r '.service' config.json)
           VERSION=$(jq -r '.version' config.json)
           ENVIRONMENT=$(jq -r '.environment' config.json)
           OVERVIEW=$(jq -r '.overview' config.json)
@@ -53,7 +54,7 @@ jobs:
 
           echo "| Key | Value |" >> "$NOTES_FILE"
           echo "| --- | ----- |" >> "$NOTES_FILE"
-          echo "| Service | Gateway |" >> "$NOTES_FILE"
+          echo "| Service | $SERVICE |" >> "$NOTES_FILE"
           echo "| Version | $VERSION |" >> "$NOTES_FILE"
           echo "| Release Date | $END_DATE |" >> "$NOTES_FILE"
           echo "| Environment | $ENVIRONMENT |" >> "$NOTES_FILE"
