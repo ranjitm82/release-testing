@@ -1,161 +1,84 @@
-name: Generate & Commit Detailed Release Notes
+- name: Generate Detailed Release Notes
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    VERSION="${{ github.event.inputs.version }}"
+    ENVIRONMENT="${{ github.event.inputs.environment }}"
+    OVERVIEW="${{ github.event.inputs.overview }}"
+    START_DATE="${{ github.event.inputs.start_date }}"
+    END_DATE="${{ steps.enddate.outputs.end_date }}"
+    NOTES_FILE="release-notes-${VERSION}.md"
+    OWNER="${{ github.repository_owner }}"
+    REPO="${{ github.repository }}"
 
-permissions:
-  contents: write
+    echo "# 🚀 Production Release Notes" >> $NOTES_FILE
+    echo "**Version:** $VERSION" >> $NOTES_FILE
+    echo "**Release Date:** $END_DATE" >> $NOTES_FILE
+    echo "**Environment:** $ENVIRONMENT" >> $NOTES_FILE
+    echo "**Release Type:** Scheduled / Major" >> $NOTES_FILE
+    echo "**Downtime:** None" >> $NOTES_FILE
+    echo "" >> $NOTES_FILE
 
-on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Release version (e.g., v1.0.0)"
-        required: true
-      environment:
-        description: "Target environment (e.g., Production)"
-        required: true
-        default: "Production"
-      overview:
-        description: "Short overview of the release"
-        required: true
-      start_date:
-        description: "Start date for PR collection (YYYY-MM-DD)"
-        required: true
-      end_date:
-        description: "End date for PR collection (YYYY-MM-DD, optional, default = today)"
-        required: false
+    echo "## 🧭 1. Overview" >> $NOTES_FILE
+    echo "$OVERVIEW" >> $NOTES_FILE
+    echo "" >> $NOTES_FILE
 
-jobs:
-  generate-and-commit:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    echo "## 🗂️ 2. Changes from $START_DATE to $END_DATE" >> $NOTES_FILE
+    echo "| PR | Title | Author | Type |" >> $NOTES_FILE
+    echo "|----|-------|--------|------|" >> $NOTES_FILE
 
-      - name: Get Current Date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+    fetch_prs_with_label() {
+      local label=$1
+      local type_label=$2
+      local page=1
+      local per_page=50
 
-      - name: Set End Date
-        id: enddate
-        run: |
-          if [ -z "${{ github.event.inputs.end_date }}" ]; then
-            echo "end_date=${{ steps.date.outputs.date }}" >> $GITHUB_OUTPUT
-          else
-            echo "end_date=${{ github.event.inputs.end_date }}" >> $GITHUB_OUTPUT
-          fi
+      while : ; do
+        response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          "https://api.github.com/search/issues?q=repo:$OWNER/$REPO+is:pr+is:merged+merged:$START_DATE..$END_DATE+label:$label&per_page=$per_page&page=$page")
 
-      - name: Generate Detailed Release Notes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          ENVIRONMENT="${{ github.event.inputs.environment }}"
-          OVERVIEW="${{ github.event.inputs.overview }}"
-          START_DATE="${{ github.event.inputs.start_date }}"
-          END_DATE="${{ steps.enddate.outputs.end_date }}"
-          NOTES_FILE="release-notes-${VERSION}.md"
-          OWNER="${{ github.repository_owner }}"
-          REPO="${{ github.repository }}"
+        items=$(echo "$response" | jq '.items')
+        item_count=$(echo "$items" | jq 'length')
 
-          echo "# 🚀 Production Release Notes" >> $NOTES_FILE
-          echo "**Version:** $VERSION" >> $NOTES_FILE
-          echo "**Release Date:** $END_DATE" >> $NOTES_FILE
-          echo "**Environment:** $ENVIRONMENT" >> $NOTES_FILE
-          echo "**Release Type:** Scheduled / Major" >> $NOTES_FILE
-          echo "**Downtime:** None" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
+        if [ "$item_count" -eq 0 ]; then
+          break
+        fi
 
-          echo "## 🧭 1. Overview" >> $NOTES_FILE
-          echo "$OVERVIEW" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
+        for row in $(seq 0 $(($item_count - 1))); do
+          number=$(echo "$items" | jq -r ".[$row].number")
+          title=$(echo "$items" | jq -r ".[$row].title" | sed 's/|/\\|/g')
+          user=$(echo "$items" | jq -r ".[$row].user.login")
+          echo "| #$number | $title | $user | $type_label |" >> $NOTES_FILE
+        done
 
-          fetch_prs_with_label() {
-            local label=$1
-            local page=1
-            local per_page=50
-            local count=0
+        page=$((page + 1))
+      done
+    }
 
-            echo "| PR | Title | Author |" >> $NOTES_FILE
-            echo "|----|-------|--------|" >> $NOTES_FILE
+    fetch_prs_with_label "feature" "Feature"
+    fetch_prs_with_label "bug" "Bug"
+    fetch_prs_with_label "enhancement" "Enhancement"
+    echo "" >> $NOTES_FILE
 
-            while : ; do
-              response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                "https://api.github.com/search/issues?q=repo:$OWNER/$REPO+is:pr+is:merged+merged:$START_DATE..$END_DATE+label:$label&per_page=$per_page&page=$page")
+    echo "## 🧱 3. Technical Changes" >> $NOTES_FILE
+    echo "- _Library upgrades, infra changes, refactoring, etc._" >> $NOTES_FILE
+    echo "" >> $NOTES_FILE
 
-              items=$(echo "$response" | jq '.items')
-              item_count=$(echo "$items" | jq 'length')
+    echo "## 🧪 4. Post-Deployment Checks" >> $NOTES_FILE
+    echo "- Smoke testing" >> $NOTES_FILE
+    echo "- Dashboard & API monitoring" >> $NOTES_FILE
+    echo "- Log analysis" >> $NOTES_FILE
+    echo "" >> $NOTES_FILE
 
-              if [ "$item_count" -eq 0 ]; then
-                break
-              fi
+    echo "## 🧍 5. Stakeholders" >> $NOTES_FILE
+    echo "| Role | Name | Responsibility |" >> $NOTES_FILE
+    echo "|------|------|----------------|" >> $NOTES_FILE
+    echo "| Release Coordinator | John Doe | Oversees deployment |" >> $NOTES_FILE
+    echo "| QA Lead | Jane Smith | Post-deployment validation |" >> $NOTES_FILE
+    echo "| Dev Lead | Ranjit Kumar | Technical sign-off |" >> $NOTES_FILE
+    echo "" >> $NOTES_FILE
 
-              for row in $(seq 0 $(($item_count - 1))); do
-                number=$(echo "$items" | jq -r ".[$row].number")
-                title=$(echo "$items" | jq -r ".[$row].title" | sed 's/|/\\|/g')
-                user=$(echo "$items" | jq -r ".[$row].user.login")
-                echo "| #$number | $title | $user |" >> $NOTES_FILE
-                count=$((count + 1))
-
-                if (( count % 5 == 0 )); then
-                  echo "" >> $NOTES_FILE
-                  echo "| PR | Title | Author |" >> $NOTES_FILE
-                  echo "|----|-------|--------|" >> $NOTES_FILE
-                fi
-              done
-
-              page=$((page + 1))
-            done
-          }
-
-          # --- New Features ---
-          echo "## 🚀 2. New Features" >> $NOTES_FILE
-          fetch_prs_with_label "feature"
-          echo "" >> $NOTES_FILE
-
-          # --- Defects Fixed ---
-          echo "## 🐞 3. Defects Fixed" >> $NOTES_FILE
-          fetch_prs_with_label "bug"
-          echo "" >> $NOTES_FILE
-
-          # --- Enhancements ---
-          echo "## 🔧 4. Enhancements" >> $NOTES_FILE
-          echo "- _List performance improvements, UI changes, etc._" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-          # --- Technical Changes ---
-          echo "## 🧱 5. Technical Changes" >> $NOTES_FILE
-          echo "- _Library upgrades, infra changes, refactoring, etc._" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-          # --- Post-Deployment Checks ---
-          echo "## 🧪 6. Post-Deployment Checks" >> $NOTES_FILE
-          echo "- Smoke testing" >> $NOTES_FILE
-          echo "- Dashboard & API monitoring" >> $NOTES_FILE
-          echo "- Log analysis" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-          # --- Stakeholders ---
-          echo "## 🧍 7. Stakeholders" >> $NOTES_FILE
-          echo "| Role | Name | Responsibility |" >> $NOTES_FILE
-          echo "|------|------|----------------|" >> $NOTES_FILE
-          echo "| Release Coordinator | John Doe | Oversees deployment |" >> $NOTES_FILE
-          echo "| QA Lead | Jane Smith | Post-deployment validation |" >> $NOTES_FILE
-          echo "| Dev Lead | Ranjit Kumar | Technical sign-off |" >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-          # --- Rollback Plan ---
-          echo "## 📝 8. Rollback Plan" >> $NOTES_FILE
-          echo "- Rollback to previous stable version (vX.X.X) if critical failure occurs." >> $NOTES_FILE
-          echo "- DB schema is backward compatible." >> $NOTES_FILE
-          echo "" >> $NOTES_FILE
-
-      - name: Move File to release-notes Folder
-        run: |
-          mv release-notes-${{ github.event.inputs.version }}.md release-notes/
-
-      - name: Commit and Push Release Notes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add release-notes/release-notes-${{ github.event.inputs.version }}.md
-          git commit -m "chore: add release notes for ${{ github.event.inputs.version }}" || echo "No changes to commit"
-          git push
+    echo "## 📝 6. Rollback Plan" >> $NOTES_FILE
+    echo "- Rollback to previous stable version (vX.X.X) if critical failure occurs." >> $NOTES_FILE
+    echo "- DB schema is backward compatible." >> $NOTES_FILE
+    echo "" >> $NOTES_FILE
