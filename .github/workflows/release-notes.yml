@@ -1,8 +1,14 @@
+# -----------------------------------------------------
+# Generate Release Notes based on PRs and Config Input
+# -----------------------------------------------------
+
+# Name displayed on the ‘Actions’ page — used to identify and manually start the workflow
 name: Generate & Commit Detailed Release Notes
 
 permissions:
   contents: write
 
+# This input will be a JSON object passed via GUI or automation
 on:
   workflow_dispatch:
     inputs:
@@ -15,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout the repository so we can write files to it
       - name: Checkout Repository
         uses: actions/checkout@v4
 
@@ -25,13 +32,15 @@ jobs:
           VERSION=$(jq -r '.version' config.json)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      # Generate the release notes Markdown file
       - name: Generate Detailed Release Notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CONFIG_JSON='${{ github.event.inputs.config }}'
           echo "$CONFIG_JSON" > config.json
-          
+
+          # Extract all input fields from JSON
           SERVICE=$(jq -r '.service' config.json)
           VERSION=$(jq -r '.version' config.json)
           ENVIRONMENT=$(jq -r '.environment' config.json)
@@ -49,9 +58,11 @@ jobs:
           OWNER="${{ github.repository_owner }}"
           REPO_NAME=$(basename "${{ github.repository }}")
 
+          # Title Header
           echo "# $ENVIRONMENT Release Notes" > "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
+          # Summary Table
           echo "| Key | Value |" >> "$NOTES_FILE"
           echo "| --- | ----- |" >> "$NOTES_FILE"
           echo "| Service | $SERVICE |" >> "$NOTES_FILE"
@@ -61,22 +72,27 @@ jobs:
           echo "| Release Type | $RELEASE_TYPE |" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
+          # Summary of the deployment
           echo "## 1. Overview" >> "$NOTES_FILE"
           echo "$OVERVIEW" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
+          # Pull Requests Table
           echo "## 2. Merged Pull Requests from $START_DATE to $END_DATE" >> "$NOTES_FILE"
           echo "| PR | Commit | Title | Author | Labels |" >> "$NOTES_FILE"
           echo "|----|--------|-------|--------|--------|" >> "$NOTES_FILE"
 
+          # Pagination in case of many PRs
           page=1
           per_page=50
 
           while : ; do
+            # Fetch merged PRs from GitHub API
             response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
               "https://api.github.com/search/issues?q=repo:${OWNER}/${REPO_NAME}+is:pr+is:merged+merged:${START_DATE}..${END_DATE}&per_page=${per_page}&page=${page}")
 
             count=$(echo "$response" | jq '.items | length')
+            # Break loop if no more PRs
             [ "$count" -eq 0 ] && break
 
             for i in $(seq 0 $((count - 1))); do
@@ -86,6 +102,7 @@ jobs:
               labels=$(echo "$response" | jq -r ".items[$i].labels | map(.name) | join(\", \")")
               [ -z "$labels" ] && labels="-"
 
+              # Get commit SHA
               merge_commit_sha=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                 "https://api.github.com/repos/${OWNER}/${REPO_NAME}/pulls/$number" | jq -r '.merge_commit_sha')
               short_sha=${merge_commit_sha:0:7}
@@ -95,17 +112,20 @@ jobs:
             page=$((page + 1))
           done
 
+          # Technical Changes
           echo "" >> "$NOTES_FILE"
           echo "## 3. Technical Changes" >> "$NOTES_FILE"
           echo "$TECHNICAL_CHANGES" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
+          # Post Deployment Checks
           echo "## 4. Post-Deployment Checks" >> "$NOTES_FILE"
           echo "- Smoke testing" >> "$NOTES_FILE"
           echo "- Dashboard & API monitoring" >> "$NOTES_FILE"
           echo "- Log analysis" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
+          # Stakeholders Table
           echo "## 5. Stakeholders" >> "$NOTES_FILE"
           echo "| Role | Name | Responsibility |" >> "$NOTES_FILE"
           echo "|------|------|----------------|" >> "$NOTES_FILE"
@@ -114,10 +134,12 @@ jobs:
           echo "| Tech Lead | $TECH_LEAD | Technical sign-off |" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
+          # Rollback Plan
           echo "## 6. Rollback Plan" >> "$NOTES_FILE"
           echo "- Rollback to previous stable version ($PREVIOUS_RELEASE_VERSION) if critical failure occurs." >> "$NOTES_FILE"
           echo "- DB schema is backward compatible." >> "$NOTES_FILE"
 
+      # Move the generated markdown file to the release-notes folder
       - name: Move File to release-notes Folder
         run: |
           mkdir -p release-notes
@@ -129,6 +151,7 @@ jobs:
             exit 1
           fi
 
+      # Commit and push the release notes file
       - name: Commit and Push Release Notes
         run: |
           git config user.name "github-actions[bot]"
