@@ -53,6 +53,7 @@ jobs:
 
           echo "| Key | Value |" >> "$NOTES_FILE"
           echo "| --- | ----- |" >> "$NOTES_FILE"
+          echo "| Service | Gateway |" >> "$NOTES_FILE"
           echo "| Version | $VERSION |" >> "$NOTES_FILE"
           echo "| Release Date | $END_DATE |" >> "$NOTES_FILE"
           echo "| Environment | $ENVIRONMENT |" >> "$NOTES_FILE"
