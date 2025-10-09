@@ -3,7 +3,7 @@
 # -----------------------------------------------------
 
 # Name displayed on the ‘Actions’ page — used to identify and manually start the workflow
-name: Generate & Commit Detailed Release Notes
+name: Generate Rewards Gateway Release Notes
 
 permissions:
   contents: write
