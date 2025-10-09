@@ -7,9 +7,11 @@
   "pr_start_date": "2025-10-01",
   "pr_end_date": "2025-10-08",
   "release_type": "Major",
+  "release_date": "2025-10-09",
   "previous_release_version": "v1.0.4",
   "technical_changes": "- Upgraded database cluster\n- Updated authentication service\n- Code refactoring in billing module",
   "release_manager": "John Doe",
   "test_lead": "Jane Smith",
-  "tech_lead": "Ranjit Kumar"
+  "tech_lead": "Ranjit Kumar",
+  "jira_ticket": "RC-100"
 }
