@@ -1,9 +1,11 @@
 {
+  "service:" "Rewards Gateway",
   "version": "v1.0.5",
   "environment": "Production",
+  "team": "D2C Engineering",
   "overview": "This release includes new features, bug fixes, and infra updates.",
-  "start_date": "2025-10-01",
-  "end_date": "2025-10-08",
+  "pr_start_date": "2025-10-01",
+  "pr_end_date": "2025-10-08",
   "release_type": "Major",
   "previous_release_version": "v1.0.4",
   "technical_changes": "- Upgraded database cluster\n- Updated authentication service\n- Code refactoring in billing module",
