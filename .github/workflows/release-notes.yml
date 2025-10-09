@@ -137,7 +137,7 @@ jobs:
           # Rollback Plan
           echo "## 6. Rollback Plan" >> "$NOTES_FILE"
           echo "- Rollback to previous stable version ($PREVIOUS_RELEASE_VERSION) if critical failure occurs." >> "$NOTES_FILE"
-          echo "- DB schema is backward compatible." >> "$NOTES_FILE"
+          echo "- DB schema is backward compatible (if any)." >> "$NOTES_FILE"
 
       # Move the generated markdown file to the release-notes folder
       - name: Move File to release-notes Folder
