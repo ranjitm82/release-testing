@@ -44,15 +44,18 @@ jobs:
           SERVICE=$(jq -r '.service' config.json)
           VERSION=$(jq -r '.version' config.json)
           ENVIRONMENT=$(jq -r '.environment' config.json)
+          TEAM=$(jq -r '.team' config.json)
           OVERVIEW=$(jq -r '.overview' config.json)
-          START_DATE=$(jq -r '.start_date' config.json)
-          END_DATE=$(jq -r '.end_date' config.json)
+          START_DATE=$(jq -r '.pr_start_date' config.json)
+          END_DATE=$(jq -r '.pr_end_date' config.json)
+          RELEASE_DATE=$(jq -r '.release_date' config.json)
           RELEASE_TYPE=$(jq -r '.release_type' config.json)
           PREVIOUS_RELEASE_VERSION=$(jq -r '.previous_release_version' config.json)
           TECHNICAL_CHANGES=$(jq -r '.technical_changes' config.json)
           RELEASE_MANAGER=$(jq -r '.release_manager' config.json)
           TEST_LEAD=$(jq -r '.test_lead' config.json)
           TECH_LEAD=$(jq -r '.tech_lead' config.json)
+          JIRA_TICKET=$(jq -r '.jira_ticket' config.json)
 
           NOTES_FILE="release-notes-${VERSION}.md"
           OWNER="${{ github.repository_owner }}"
@@ -66,10 +69,12 @@ jobs:
           echo "| Key | Value |" >> "$NOTES_FILE"
           echo "| --- | ----- |" >> "$NOTES_FILE"
           echo "| Service | $SERVICE |" >> "$NOTES_FILE"
-          echo "| Version | $VERSION |" >> "$NOTES_FILE"
-          echo "| Release Date | $END_DATE |" >> "$NOTES_FILE"
+          echo "| Release Version | $VERSION |" >> "$NOTES_FILE"
           echo "| Environment | $ENVIRONMENT |" >> "$NOTES_FILE"
+          echo "| Team | $TEAM |" >> "$NOTES_FILE"
           echo "| Release Type | $RELEASE_TYPE |" >> "$NOTES_FILE"
+          echo "| Release Date | $RELEASE_DATE |" >> "$NOTES_FILE"
+          echo "| Jira Ticket | $JIRA_TICKET |" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
 
           # Summary of the deployment
